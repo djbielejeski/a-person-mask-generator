@@ -16,6 +16,12 @@ Extension for Automatic1111 to automatically create masks for Background/Hair/Bo
 
 
 ## Examples
+
+### Face
 ![image](readme/01-face.png)
+
+### Face + Body
 ![image](readme/02-face+body.png)
+
+### Clothes + Hair
 ![image](readme/03-clothes+hair.png)
