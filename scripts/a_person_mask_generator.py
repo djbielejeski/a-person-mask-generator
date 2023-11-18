@@ -8,6 +8,7 @@ import numpy as np
 import mediapipe as mp
 
 import modules.scripts as scripts
+from modules.paths_internal import models_path
 
 BaseOptions = mp.tasks.BaseOptions
 ImageSegmenter = mp.tasks.vision.ImageSegmenter
@@ -51,7 +52,7 @@ class Script(scripts.Script):
 
     def generate_mask(self, image: Image, mask_targets: list[str]) -> Image:
         if image is not None and len(mask_targets) > 0:
-            model_folder_path = os.path.join('models', 'mediapipe')
+            model_folder_path = os.path.join(models_path, 'mediapipe')
             os.makedirs(model_folder_path, exist_ok=True)
 
             model_path = os.path.join(model_folder_path, 'selfie_multiclass_256x256.tflite')
