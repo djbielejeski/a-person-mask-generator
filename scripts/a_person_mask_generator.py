@@ -34,7 +34,6 @@ class Script(scripts.Script):
     def show(self, is_img2img):
         return scripts.AlwaysVisible
 
-
     def get_mediapipe_image(self, image: Image) -> mp.Image:
         # Convert gr.Image to NumPy array
         numpy_image = np.asarray(image)
@@ -137,7 +136,8 @@ class Script(scripts.Script):
                                 elem_id=f"a_person_mask_generator_enable_checkbox",
                             )
 
-                            gr.HTML("<div style='margin: 8px 0px !important;'>* You probably want to be on the 'Inpaint' or 'Inpaint Upload' tab to make use of the mask settings.</div>")
+                            gr.HTML(
+                                "<div style='margin: 8px 0px !important;'>* You probably want to be on the 'Inpaint' or 'Inpaint Upload' tab to make use of the mask settings.</div>")
 
                             mask_targets = gr.Dropdown(
                                 label="Mask",
@@ -205,7 +205,6 @@ class Script(scripts.Script):
         def update_image(image: Image):
             self.img2img = image
 
-
         if component.elem_id == "img2img_image":
             self.img2img_image = component
             self.img2img_image.change(fn=update_image, inputs=[self.img2img_image])
@@ -215,7 +214,7 @@ class Script(scripts.Script):
             self.img2img_sketch.change(fn=update_image, inputs=[self.img2img_sketch])
             return self.img2img_sketch
         # The inpaint component is borked.  No Preview for that tab yet.
-        #if component.elem_id == "img2maskimg":
+        # if component.elem_id == "img2maskimg":
         #    self.img2maskimg = component
         #    self.img2maskimg.select(fn=update_image, inputs=[self.img2maskimg])
         #    return self.img2maskimg
@@ -230,30 +229,12 @@ class Script(scripts.Script):
 
         return component
 
-
-        #def img2img_change(image):
-        #    try:
-        #        self.img2img = image
-        #    except:
-        #        pass
-#
-        #if component.elem_id == "":
-        #    image_component_ids = [
-        #        "img2img_image",
-        #        "img2img_sketch",
-        #        "img2maskimg",
-        #        "inpaint_sketch",
-        #        "img_inpaint_base"
-        #    ]
-        #
-        # component.change(fn=img2img_change, inputs=component)
-
     """
     This function is called very early during processing begins for AlwaysVisible scripts.
     You can modify the processing object (p) here, inject hooks, etc.
     args contains all values returned by components from ui()
     """
 
-    def before_process(self, p, enabled: bool, mask_targets: list[str]):
+    def before_process(self, p, enabled: bool = False, mask_targets: list[str] = []):
         if enabled and len(p.init_images) > 0 and len(mask_targets) > 0:
             p.image_mask = self.generate_mask(image=p.init_images[-1], mask_targets=mask_targets)
