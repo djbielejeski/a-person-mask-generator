@@ -25,3 +25,6 @@ Extension for Automatic1111 to automatically create masks for Background/Hair/Bo
 
 ### Clothes + Hair
 ![image](readme/03-clothes+hair.png)
+
+### Mask Settings
+![image](readme/04-mask-settings.png)
