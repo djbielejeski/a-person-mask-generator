@@ -9,6 +9,7 @@ import mediapipe as mp
 
 import modules.scripts as scripts
 from modules.paths_internal import models_path
+from modules.ui_components import FormRow, FormGroup
 
 BaseOptions = mp.tasks.BaseOptions
 ImageSegmenter = mp.tasks.vision.ImageSegmenter
@@ -137,8 +138,6 @@ class Script(scripts.Script):
                                 elem_id=f"a_person_mask_generator_enable_checkbox",
                             )
 
-                            gr.HTML(
-                                "<div style='margin: 8px 0px !important;'>* You probably want to be on the 'Inpaint' or 'Inpaint Upload' tab to make use of the mask settings.</div>")
 
                             mask_targets = gr.Dropdown(
                                 label="Mask",
@@ -155,9 +154,34 @@ class Script(scripts.Script):
                                 interactive=True,
                             )
 
-                            gr.HTML("<div style='margin: 8px 0px !important;'>** Preview is not available on 'Inpaint' tab.</div>")
+                            gr.HTML("<div style='margin: 8px 0px !important;'></div>")
 
-                            preview_button = gr.Button(value="Preview Mask", elem_id="person_mask_generator_preview_button", )
+                            preview_button = gr.Button(value="Preview Mask *", elem_id="person_mask_generator_preview_button")
+                            gr.HTML("<div style='margin: 8px 0px !important; opacity: 0.75;'>* Not available on 'Inpaint' tab.</div>")
+
+                            override_inpaint_enabled = gr.Checkbox(
+                                label="Override mask settings",
+                                value=False,
+                                elem_id=f"a_person_mask_generator_enable_checkbox",
+                            )
+
+                            with FormGroup(elem_id="a_person_mask_generator_inpaint_controls", visible=False) as a_person_mask_generator_inpaint_controls:
+                                with FormRow():
+                                    mask_blur = gr.Slider(label='Mask blur', minimum=0, maximum=64, step=1, value=4, elem_id="a_person_mask_generator_mask_blur")
+                                with FormRow():
+                                    inpainting_mask_invert = gr.Radio(label='Mask mode', choices=['Inpaint masked', 'Inpaint not masked'], value='Inpaint masked', type="index",
+                                                                      elem_id="a_person_mask_generator_mask_mode")
+                                with FormRow():
+                                    inpainting_fill = gr.Radio(label='Masked content', choices=['fill', 'original', 'latent noise', 'latent nothing'], value='original',
+                                                               type="index",
+                                                               elem_id="a_person_mask_generator_inpainting_fill")
+                                with FormRow():
+                                    inpaint_full_res = gr.Radio(label="Inpaint area", choices=["Whole picture", "Only masked"], type="index", value="Whole picture",
+                                                                elem_id="a_person_mask_generator_inpaint_full_res")
+
+                                with FormRow():
+                                    inpaint_full_res_padding = gr.Slider(label='Only masked padding, pixels', minimum=0, maximum=256, step=4, value=32,
+                                                                         elem_id="a_person_mask_generator_inpaint_full_res_padding")
 
                         with gr.Column():
                             preview_mask_image = gr.Image(value=None, label="Mask Preview", show_label=True, interactive=False, height=256, width=256,
@@ -192,9 +216,26 @@ class Script(scripts.Script):
                     outputs=preview_mask_image
                 )
 
+                def toggle_inpaint_controls(show: bool):
+                    return {
+                        a_person_mask_generator_inpaint_controls: gr.update(visible=show)
+                    }
+
+                override_inpaint_enabled.change(
+                    fn=toggle_inpaint_controls,
+                    inputs=[override_inpaint_enabled],
+                    outputs=a_person_mask_generator_inpaint_controls
+                )
+
                 return [
                     enabled,
                     mask_targets,
+                    override_inpaint_enabled,
+                    mask_blur,
+                    inpainting_mask_invert,
+                    inpainting_fill,
+                    inpaint_full_res,
+                    inpaint_full_res_padding,
                 ]
         else:
             return ()
@@ -236,6 +277,24 @@ class Script(scripts.Script):
     args contains all values returned by components from ui()
     """
 
-    def before_process(self, p, enabled: bool = False, mask_targets: list[str] = []):
+    def before_process(
+            self,
+            p,
+            enabled: bool = False,
+            mask_targets: list[str] = [],
+            override_inpaint_enabled: bool = False,
+            mask_blur: int = 0,
+            inpainting_mask_invert: int = 0,
+            inpainting_fill: int = 0,
+            inpaint_full_res: bool = False,
+            inpaint_full_res_padding: int = 0,
+    ):
         if enabled and len(p.init_images) > 0 and len(mask_targets) > 0:
             p.image_mask = self.generate_mask(image=p.init_images[-1], mask_targets=mask_targets)
+
+            if override_inpaint_enabled:
+                p.mask_blur = mask_blur
+                p.inpainting_mask_invert = inpainting_mask_invert
+                p.inpainting_fill = inpainting_fill
+                p.inpaint_full_res = inpaint_full_res
+                p.inpaint_full_res_padding = inpaint_full_res_padding
