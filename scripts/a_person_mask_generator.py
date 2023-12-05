@@ -51,7 +51,7 @@ class Script(scripts.Script):
 
         return mp.Image(image_format=image_format, data=numpy_image)
 
-    def generate_mask(self, image: Image, mask_targets: list[str]) -> Image:
+    def generate_mask(self, image: Image, mask_targets: list[str], mask_dilation : int) -> Image:
         if image is not None and len(mask_targets) > 0:
             model_folder_path = os.path.join(models_path, 'mediapipe')
             os.makedirs(model_folder_path, exist_ok=True)
@@ -115,6 +115,12 @@ class Script(scripts.Script):
                 # Merge our masks taking the maximum from each
                 merged_mask_arrays = reduce(np.maximum, mask_arrays)
 
+                # Dilate or erode the mask
+                if mask_dilation > 0:
+                    merged_mask_arrays = cv2.dilate(merged_mask_arrays, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2*mask_dilation + 1, 2*mask_dilation + 1), (mask_dilation, mask_dilation)))
+                elif mask_dilation < 0:
+                    merged_mask_arrays = cv2.erode(merged_mask_arrays, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2*mask_dilation + 1, 2*mask_dilation + 1), (mask_dilation, mask_dilation)))
+
                 # Create the image
                 mask_image = Image.fromarray(merged_mask_arrays)
 
@@ -159,6 +165,9 @@ class Script(scripts.Script):
                             preview_button = gr.Button(value="Preview Mask *", elem_id="person_mask_generator_preview_button")
                             gr.HTML("<div style='margin: 8px 0px !important; opacity: 0.75;'>* Not available on 'Inpaint' tab.</div>")
 
+                            inpaint_dilation = gr.Slider(label='Mask dilation, pixels', minimum=0, maximum=64, step=1, value=0,
+                                                         elem_id="a_person_mask_generator_inpaint_dilation")
+
                             override_inpaint_enabled = gr.Checkbox(
                                 label="Override mask settings",
                                 value=False,
@@ -187,9 +196,9 @@ class Script(scripts.Script):
                             preview_mask_image = gr.Image(value=None, label="Mask Preview", show_label=True, interactive=False, height=256, width=256,
                                                           elem_id="a_person_mask_generator_preview_mask_image")
 
-                def update_preview_image(mask_targets: list[str]):
+                def update_preview_image(mask_targets: list[str], inpaint_dilation: float):
                     try:
-                        mask_image = self.generate_mask(image=self.img2img, mask_targets=mask_targets)
+                        mask_image = self.generate_mask(image=self.img2img, mask_targets=mask_targets, mask_dilation=int(inpaint_dilation))
 
                         return {
                             preview_mask_image: gr.update(value=mask_image)
@@ -200,19 +209,25 @@ class Script(scripts.Script):
                 # change handlers
                 mask_targets.change(
                     fn=update_preview_image,
-                    inputs=mask_targets,
+                    inputs=[mask_targets, inpaint_dilation],
                     outputs=preview_mask_image
                 )
 
                 enabled.change(
                     fn=update_preview_image,
-                    inputs=mask_targets,
+                    inputs=[mask_targets, inpaint_dilation],
                     outputs=preview_mask_image
                 )
 
                 preview_button.click(
                     fn=update_preview_image,
-                    inputs=mask_targets,
+                    inputs=[mask_targets, inpaint_dilation],
+                    outputs=preview_mask_image
+                )
+
+                inpaint_dilation.release(
+                    fn=update_preview_image,
+                    inputs=[mask_targets, inpaint_dilation],
                     outputs=preview_mask_image
                 )
 
@@ -236,6 +251,7 @@ class Script(scripts.Script):
                     inpainting_fill,
                     inpaint_full_res,
                     inpaint_full_res_padding,
+                    inpaint_dilation,
                 ]
         else:
             return ()
@@ -288,10 +304,10 @@ class Script(scripts.Script):
             inpainting_fill: int = 0,
             inpaint_full_res: bool = False,
             inpaint_full_res_padding: int = 0,
+            inpaint_dilation: int = 0,
     ):
         if enabled and len(p.init_images) > 0 and len(mask_targets) > 0:
-            p.image_mask = self.generate_mask(image=p.init_images[-1], mask_targets=mask_targets)
-
+            p.image_mask = self.generate_mask(image=p.init_images[-1], mask_targets=mask_targets, mask_dilation=inpaint_dilation)
             if override_inpaint_enabled:
                 p.mask_blur = mask_blur
                 p.inpainting_mask_invert = inpainting_mask_invert
