@@ -44,7 +44,6 @@ class APersonMaskGenerator:
                     "hair_mask": ("BOOLEAN", {"default": False, "label_on": "enabled", "label_off": "disabled"}),
                     "body_mask": ("BOOLEAN", {"default": False, "label_on": "enabled", "label_off": "disabled"}),
                     "clothes_mask": ("BOOLEAN", {"default": False, "label_on": "enabled", "label_off": "disabled"}),
-                    "dilation": ("INT", {"default": 0, "min": -64, "max": 64, "step": 1, "display": "number"}),
                 }
         }
 
@@ -69,7 +68,7 @@ class APersonMaskGenerator:
 
         return mp.Image(image_format=image_format, data=numpy_image)
 
-    def generate_mask(self, images, face_mask: bool, background_mask: bool, hair_mask: bool, body_mask: bool, clothes_mask: bool, dilation: int):
+    def generate_mask(self, images, face_mask: bool, background_mask: bool, hair_mask: bool, body_mask: bool, clothes_mask: bool):
 
         """Create a segmentation mask from an image
 
@@ -80,7 +79,6 @@ class APersonMaskGenerator:
             hair_mask (bool): create a mask for the body .
             body_mask (bool): create a mask for the face.
             clothes_mask (bool): create a mask for the clothes.
-            dilation (int): how much to dilate (expand or contract) the mask in pixels
 
         Returns:
             torch.Tensor: The segmentation masks.
@@ -141,21 +139,17 @@ class APersonMaskGenerator:
                 mask_foreground_array[:] = (255, 255, 255, 255)
 
                 mask_arrays = []
-                for i, mask in enumerate(masks):
-                    condition = np.stack((mask.numpy_view(),) * image_shape[-1], axis=-1) > 0.25
-                    mask_array = np.where(condition, mask_foreground_array, mask_background_array)
-                    mask_arrays.append(mask_array)
+
+                if len(masks) == 0:
+                    mask_arrays.append(mask_background_array)
+                else:
+                    for i, mask in enumerate(masks):
+                        condition = np.stack((mask.numpy_view(),) * image_shape[-1], axis=-1) > 0.25
+                        mask_array = np.where(condition, mask_foreground_array, mask_background_array)
+                        mask_arrays.append(mask_array)
 
                 # Merge our masks taking the maximum from each
                 merged_mask_arrays = reduce(np.maximum, mask_arrays)
-
-                # Dilate or erode the mask
-                if dilation > 0:
-                    merged_mask_arrays = cv2.dilate(merged_mask_arrays,
-                                                    cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * dilation + 1, 2 * dilation + 1), (dilation, dilation)))
-                elif dilation < 0:
-                    merged_mask_arrays = cv2.erode(merged_mask_arrays,
-                                                   cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * dilation + 1, 2 * dilation + 1), (dilation, dilation)))
 
                 # Create the image
                 mask_image = Image.fromarray(merged_mask_arrays)
