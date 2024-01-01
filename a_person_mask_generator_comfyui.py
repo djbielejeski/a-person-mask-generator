@@ -9,26 +9,21 @@ import mediapipe as mp
 
 import folder_paths
 
-model_path = folder_paths.models_dir
+models_directory_path = folder_paths.models_dir
 model_folder_name = 'mediapipe'
-model_folder_path = os.path.join(model_path, model_folder_name)
+model_folder_path = os.path.join(models_directory_path, model_folder_name)
 os.makedirs(model_folder_path, exist_ok=True)
 
-BaseOptions = mp.tasks.BaseOptions
-ImageSegmenter = mp.tasks.vision.ImageSegmenter
-ImageSegmenterOptions = mp.tasks.vision.ImageSegmenterOptions
-VisionRunningMode = mp.tasks.vision.RunningMode
+model_path = os.path.join(model_folder_path, 'selfie_multiclass_256x256.tflite')
 
 
 class APersonMaskGenerator:
 
     def __init__(self):
-        self.model_path = os.path.join(model_folder_path, 'selfie_multiclass_256x256.tflite')
-
-        if not os.path.exists(self.model_path):
+        if not os.path.exists(model_path):
             model_url = 'https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_multiclass_256x256/float32/latest/selfie_multiclass_256x256.tflite'
             print(f"Downloading 'selfie_multiclass_256x256.tflite' model")
-            wget.download(model_url, self.model_path)
+            wget.download(model_url, model_path)
 
     @classmethod
     def INPUT_TYPES(self):
@@ -96,11 +91,11 @@ class APersonMaskGenerator:
             mask_foreground_array = np.zeros((image_pil.size[0], image_pil.size[1], 4), dtype=np.uint8)
             mask_foreground_array[:] = (255, 255, 255, 255)
 
-            options = ImageSegmenterOptions(base_options=BaseOptions(model_asset_path=self.model_path),
-                                            running_mode=VisionRunningMode.IMAGE,
+            options = mp.tasks.vision.ImageSegmenterOptions(base_options=mp.tasks.BaseOptions(model_asset_path=model_path),
+                                            running_mode=mp.tasks.vision.RunningMode.IMAGE,
                                             output_category_mask=True)
             # Create the image segmenter
-            with ImageSegmenter.create_from_options(options) as segmenter:
+            with mp.tasks.vision.ImageSegmenter.create_from_options(options) as segmenter:
 
                 # Retrieve the masks for the segmented image
                 media_pipe_image = self.get_mediapipe_image(image=image_pil)
