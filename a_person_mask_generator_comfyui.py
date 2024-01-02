@@ -1,4 +1,10 @@
 import os
+import sys
+
+sys.path.append(
+    os.path.dirname(os.path.abspath(__file__))
+)
+
 from functools import reduce
 import wget
 import cv2
@@ -9,21 +15,28 @@ import mediapipe as mp
 
 import folder_paths
 
-models_directory_path = folder_paths.models_dir
-model_folder_name = 'mediapipe'
-model_folder_path = os.path.join(models_directory_path, model_folder_name)
-os.makedirs(model_folder_path, exist_ok=True)
 
-model_path = os.path.join(model_folder_path, 'selfie_multiclass_256x256.tflite')
+def get_a_person_mask_generator_model_path() -> str:
+    model_folder_name = 'mediapipe'
+    model_name = 'selfie_multiclass_256x256.tflite'
+
+    model_folder_path = os.path.join(folder_paths.models_dir, model_folder_name)
+    model_file_path = os.path.join(model_folder_path, model_name)
+
+    if not os.path.exists(model_file_path):
+        model_url = f'https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_multiclass_256x256/float32/latest/{model_name}'
+        print(f"Downloading '{model_name}' model")
+        os.makedirs(model_folder_path, exist_ok=True)
+        wget.download(model_url, model_file_path)
+
+    return model_file_path
 
 
 class APersonMaskGenerator:
 
     def __init__(self):
-        if not os.path.exists(model_path):
-            model_url = 'https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_multiclass_256x256/float32/latest/selfie_multiclass_256x256.tflite'
-            print(f"Downloading 'selfie_multiclass_256x256.tflite' model")
-            wget.download(model_url, model_path)
+        # download the model if we need it
+        get_a_person_mask_generator_model_path()
 
     @classmethod
     def INPUT_TYPES(self):
@@ -78,24 +91,33 @@ class APersonMaskGenerator:
         Returns:
             torch.Tensor: The segmentation masks.
         """
+
+        a_person_mask_generator_model_path = get_a_person_mask_generator_model_path()
+        a_person_mask_generator_model_buffer = None
+
+        with open(a_person_mask_generator_model_path, "rb") as f:
+            a_person_mask_generator_model_buffer = f.read()
+
+        image_segmenter_base_options = mp.tasks.BaseOptions(model_asset_buffer=a_person_mask_generator_model_buffer)
+        options = mp.tasks.vision.ImageSegmenterOptions(
+            base_options=image_segmenter_base_options,
+            running_mode=mp.tasks.vision.RunningMode.IMAGE,
+            output_category_mask=True)
+
+        # Create the image segmenter
         res_masks = []
-        for image in images:
-            # Convert the Tensor to a PIL image
-            i = 255. * image.cpu().numpy()
-            image_pil = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
+        with mp.tasks.vision.ImageSegmenter.create_from_options(options) as segmenter:
+            for image in images:
+                # Convert the Tensor to a PIL image
+                i = 255. * image.cpu().numpy()
+                image_pil = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
 
-            # create our foreground and background arrays for storing the mask results
-            mask_background_array = np.zeros((image_pil.size[0], image_pil.size[1], 4), dtype=np.uint8)
-            mask_background_array[:] = (0, 0, 0, 255)
+                # create our foreground and background arrays for storing the mask results
+                mask_background_array = np.zeros((image_pil.size[0], image_pil.size[1], 4), dtype=np.uint8)
+                mask_background_array[:] = (0, 0, 0, 255)
 
-            mask_foreground_array = np.zeros((image_pil.size[0], image_pil.size[1], 4), dtype=np.uint8)
-            mask_foreground_array[:] = (255, 255, 255, 255)
-
-            options = mp.tasks.vision.ImageSegmenterOptions(base_options=mp.tasks.BaseOptions(model_asset_path=model_path),
-                                            running_mode=mp.tasks.vision.RunningMode.IMAGE,
-                                            output_category_mask=True)
-            # Create the image segmenter
-            with mp.tasks.vision.ImageSegmenter.create_from_options(options) as segmenter:
+                mask_foreground_array = np.zeros((image_pil.size[0], image_pil.size[1], 4), dtype=np.uint8)
+                mask_foreground_array[:] = (255, 255, 255, 255)
 
                 # Retrieve the masks for the segmented image
                 media_pipe_image = self.get_mediapipe_image(image=image_pil)
