@@ -52,6 +52,7 @@ class APersonMaskGenerator:
                     "hair_mask": ("BOOLEAN", {"default": False, "label_on": "enabled", "label_off": "disabled"}),
                     "body_mask": ("BOOLEAN", {"default": False, "label_on": "enabled", "label_off": "disabled"}),
                     "clothes_mask": ("BOOLEAN", {"default": False, "label_on": "enabled", "label_off": "disabled"}),
+                    "confidence": ("FLOAT", {"default": 0.40, "min": 0.01, "max": 1.0, "step": 0.01},),
                 }
         }
 
@@ -76,7 +77,7 @@ class APersonMaskGenerator:
 
         return mp.Image(image_format=image_format, data=numpy_image)
 
-    def generate_mask(self, images, face_mask: bool, background_mask: bool, hair_mask: bool, body_mask: bool, clothes_mask: bool):
+    def generate_mask(self, images, face_mask: bool, background_mask: bool, hair_mask: bool, body_mask: bool, clothes_mask: bool, confidence: float):
 
         """Create a segmentation mask from an image
 
@@ -161,7 +162,7 @@ class APersonMaskGenerator:
                     mask_arrays.append(mask_background_array)
                 else:
                     for i, mask in enumerate(masks):
-                        condition = np.stack((mask.numpy_view(),) * image_shape[-1], axis=-1) > 0.25
+                        condition = np.stack((mask.numpy_view(),) * image_shape[-1], axis=-1) > confidence
                         mask_array = np.where(condition, mask_foreground_array, mask_background_array)
                         mask_arrays.append(mask_array)
 
