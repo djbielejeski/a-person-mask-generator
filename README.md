@@ -1,8 +1,8 @@
 # a-person-mask-generator
-Extension for Automatic1111 to automatically create masks for Background/Hair/Body/Face/Clothes in Img2Img
+Extension for Automatic1111 and ComfyUI to automatically create masks for Background/Hair/Body/Face/Clothes in Img2Img
 
 
-## Install
+## Install - Automatic1111 Web UI
 
 (from Mikubill/sd-webui-controlnet)
 
@@ -15,7 +15,24 @@ Extension for Automatic1111 to automatically create masks for Background/Hair/Bo
 7. Completely restart A1111 webui including your terminal. (If you do not know what is a "terminal", you can reboot your computer: turn your computer off and turn it on again.)
 
 
-## Examples
+## Install - ComfyUI
+
+1. Navigate to your ComfyUI folder, then into the `custom_nodes` folder in a `CMD` window and run the following command
+
+```
+git clone https://github.com/djbielejeski/a-person-mask-generator
+```
+
+### Example
+```cmd
+D:\ComfyUI\custom_nodes>git clone https://github.com/djbielejeski/a-person-mask-generator
+```
+
+2. Restart ComfyUI.
+
+
+
+## Automatic1111 Examples
 
 ### Face
 ![image](readme/01-face.png)
@@ -28,3 +45,18 @@ Extension for Automatic1111 to automatically create masks for Background/Hair/Bo
 
 ### Mask Settings
 ![image](readme/04-mask-settings.png)
+
+
+## ComfyUI Example
+
+Workflow embedded in image, drag into ComfyUI to use.
+
+Masks in this order
+
+1) Face
+2) Background
+3) Body + Clothes
+4) Hair
+
+![image](readme/ComfyUI-workflow.png)
+
