@@ -1,6 +1,7 @@
 # a-person-mask-generator
 Extension for Automatic1111 and ComfyUI to automatically create masks for Background/Hair/Body/Face/Clothes in Img2Img
 
+Uses the [Multi-class selfie segmentation model](https://developers.google.com/mediapipe/solutions/vision/image_segmenter#multiclass-model) model by Google.
 
 ## Install - Automatic1111 Web UI
 
