@@ -53,10 +53,13 @@ class Script(scripts.Script):
 
     def generate_mask(self, image: Image, mask_targets: list[str], mask_dilation : int) -> Image:
         if image is not None and len(mask_targets) > 0:
-            model_folder_path = os.path.join(models_path, 'mediapipe')
+            model_folder_name = 'mediapipe'
+            model_file_name = 'selfie_multiclass_256x256.tflite'
+            model_folder_path = os.path.join(models_path, model_folder_name) if not models_path.endswith(model_folder_name) else models_path
             os.makedirs(model_folder_path, exist_ok=True)
+        
 
-            model_path = os.path.join(model_folder_path, 'selfie_multiclass_256x256.tflite')
+            model_path = os.path.join(model_folder_path, model_file_name)
             model_url = 'https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_multiclass_256x256/float32/latest/selfie_multiclass_256x256.tflite'
             if not os.path.exists(model_path):
                 print(f"Downloading 'selfie_multiclass_256x256.tflite' model")
