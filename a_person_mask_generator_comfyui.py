@@ -40,6 +40,9 @@ class APersonMaskGenerator:
 
     @classmethod
     def INPUT_TYPES(self):
+        false_widget = ("BOOLEAN", {"default": False, "label_on": "enabled", "label_off": "disabled"})
+        true_widget = ("BOOLEAN", {"default": True, "label_on": "enabled", "label_off": "disabled"})
+
         return {
             "required":
                 {
@@ -47,11 +50,11 @@ class APersonMaskGenerator:
                 },
             "optional":
                 {
-                    "face_mask": ("BOOLEAN", {"default": True, "label_on": "enabled", "label_off": "disabled"}),
-                    "background_mask": ("BOOLEAN", {"default": False, "label_on": "enabled", "label_off": "disabled"}),
-                    "hair_mask": ("BOOLEAN", {"default": False, "label_on": "enabled", "label_off": "disabled"}),
-                    "body_mask": ("BOOLEAN", {"default": False, "label_on": "enabled", "label_off": "disabled"}),
-                    "clothes_mask": ("BOOLEAN", {"default": False, "label_on": "enabled", "label_off": "disabled"}),
+                    "face_mask": true_widget,
+                    "background_mask": false_widget,
+                    "hair_mask": false_widget,
+                    "body_mask": false_widget,
+                    "clothes_mask": false_widget,
                     "confidence": ("FLOAT", {"default": 0.40, "min": 0.01, "max": 1.0, "step": 0.01},),
                 }
         }

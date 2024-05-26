@@ -3,6 +3,12 @@ Extension for Automatic1111 and ComfyUI to automatically create masks for Backgr
 
 Uses the [Multi-class selfie segmentation model](https://developers.google.com/mediapipe/solutions/vision/image_segmenter#multiclass-model) model by Google.
 
+## Updates
+- 2024-05-26 - Adding facial landmark mask outputs for ComfyUI
+- 2024-05-25 - Fixed ComfyUI requirements and install
+- 2024-01-01 - Added ComfyUI support
+- 2023-11-16 - Initial release
+
 ## Install - Automatic1111 Web UI
 
 (from Mikubill/sd-webui-controlnet)
@@ -48,7 +54,7 @@ D:\ComfyUI\custom_nodes>git clone https://github.com/djbielejeski/a-person-mask-
 ![image](readme/04-mask-settings.png)
 
 
-## ComfyUI Example
+## ComfyUI Example - Person
 
 Workflow embedded in image, drag into ComfyUI to use.
 
@@ -61,3 +67,6 @@ Masks in this order
 
 ![image](readme/ComfyUI-workflow.png)
 
+## ComfyUI Example - Face Landmarks
+
+![image](readme/ComfyUI-Workflow-FaceLandmarks.png)
