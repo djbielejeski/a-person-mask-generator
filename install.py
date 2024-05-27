@@ -2,17 +2,9 @@ import os
 
 
 def install_package(package_name):
-    try:
-        # Auto1111 install
-        __import__('launch')
-        import launch
-        if not launch.is_installed(package_name):
-            launch.run_pip(f"install {package_name}", f"a-person-mask-generator requirement: {package_name}")
-    except ImportError:
-        # ComfyUI install
-        import sys
-        import subprocess
-        subprocess.check_call([sys.executable, "-m", "pip", "install", package_name])
+    import sys
+    import subprocess
+    subprocess.check_call([sys.executable, "-m", "pip", "install", package_name])
 
 
 def install_dependencies():
