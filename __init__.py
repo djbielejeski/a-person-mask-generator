@@ -1,3 +1,8 @@
+# comfyui install
+from .install import install_dependencies
+
+install_dependencies()
+
 from .a_person_mask_generator_comfyui import APersonMaskGenerator
 from .a_person_face_landmark_mask_generator_comfyui import APersonFaceLandmarkMaskGenerator
 
