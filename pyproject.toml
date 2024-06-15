@@ -10,6 +10,6 @@ Repository = "https://github.com/djbielejeski/a-person-mask-generator"
 #  Used by Comfy Registry https://comfyregistry.org
 
 [tool.comfy]
-PublisherId = ""
+PublisherId = "djbielejeski"
 DisplayName = "a-person-mask-generator"
 Icon = ""
