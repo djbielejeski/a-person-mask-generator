@@ -1,9 +1,7 @@
 import os
 import sys
 
-sys.path.append(
-    os.path.dirname(os.path.abspath(__file__))
-)
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from functools import reduce
 import cv2
@@ -16,15 +14,16 @@ import folder_paths
 
 
 def get_a_person_mask_generator_model_path() -> str:
-    model_folder_name = 'mediapipe'
-    model_name = 'selfie_multiclass_256x256.tflite'
+    model_folder_name = "mediapipe"
+    model_name = "selfie_multiclass_256x256.tflite"
 
     model_folder_path = os.path.join(folder_paths.models_dir, model_folder_name)
     model_file_path = os.path.join(model_folder_path, model_name)
 
     if not os.path.exists(model_file_path):
         import wget
-        model_url = f'https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_multiclass_256x256/float32/latest/{model_name}'
+
+        model_url = f"https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_multiclass_256x256/float32/latest/{model_name}"
         print(f"Downloading '{model_name}' model")
         os.makedirs(model_folder_path, exist_ok=True)
         wget.download(model_url, model_file_path)
@@ -40,23 +39,30 @@ class APersonMaskGenerator:
 
     @classmethod
     def INPUT_TYPES(self):
-        false_widget = ("BOOLEAN", {"default": False, "label_on": "enabled", "label_off": "disabled"})
-        true_widget = ("BOOLEAN", {"default": True, "label_on": "enabled", "label_off": "disabled"})
+        false_widget = (
+            "BOOLEAN",
+            {"default": False, "label_on": "enabled", "label_off": "disabled"},
+        )
+        true_widget = (
+            "BOOLEAN",
+            {"default": True, "label_on": "enabled", "label_off": "disabled"},
+        )
 
         return {
-            "required":
-                {
-                    "images": ("IMAGE",),
-                },
-            "optional":
-                {
-                    "face_mask": true_widget,
-                    "background_mask": false_widget,
-                    "hair_mask": false_widget,
-                    "body_mask": false_widget,
-                    "clothes_mask": false_widget,
-                    "confidence": ("FLOAT", {"default": 0.40, "min": 0.01, "max": 1.0, "step": 0.01},),
-                }
+            "required": {
+                "images": ("IMAGE",),
+            },
+            "optional": {
+                "face_mask": true_widget,
+                "background_mask": false_widget,
+                "hair_mask": false_widget,
+                "body_mask": false_widget,
+                "clothes_mask": false_widget,
+                "confidence": (
+                    "FLOAT",
+                    {"default": 0.40, "min": 0.01, "max": 1.0, "step": 0.01},
+                ),
+            },
         }
 
     CATEGORY = "A Person Mask Generator - David Bielejeski"
@@ -80,8 +86,16 @@ class APersonMaskGenerator:
 
         return mp.Image(image_format=image_format, data=numpy_image)
 
-    def generate_mask(self, images, face_mask: bool, background_mask: bool, hair_mask: bool, body_mask: bool, clothes_mask: bool, confidence: float):
-
+    def generate_mask(
+        self,
+        images,
+        face_mask: bool,
+        background_mask: bool,
+        hair_mask: bool,
+        body_mask: bool,
+        clothes_mask: bool,
+        confidence: float,
+    ):
         """Create a segmentation mask from an image
 
         Args:
@@ -102,30 +116,40 @@ class APersonMaskGenerator:
         with open(a_person_mask_generator_model_path, "rb") as f:
             a_person_mask_generator_model_buffer = f.read()
 
-        image_segmenter_base_options = mp.tasks.BaseOptions(model_asset_buffer=a_person_mask_generator_model_buffer)
+        image_segmenter_base_options = mp.tasks.BaseOptions(
+            model_asset_buffer=a_person_mask_generator_model_buffer
+        )
         options = mp.tasks.vision.ImageSegmenterOptions(
             base_options=image_segmenter_base_options,
             running_mode=mp.tasks.vision.RunningMode.IMAGE,
-            output_category_mask=True)
+            output_category_mask=True,
+        )
 
         # Create the image segmenter
         res_masks = []
         with mp.tasks.vision.ImageSegmenter.create_from_options(options) as segmenter:
             for image in images:
                 # Convert the Tensor to a PIL image
-                i = 255. * image.cpu().numpy()
+                i = 255.0 * image.cpu().numpy()
                 image_pil = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
 
                 # create our foreground and background arrays for storing the mask results
-                mask_background_array = np.zeros((image_pil.size[0], image_pil.size[1], 4), dtype=np.uint8)
+                mask_background_array = np.zeros(
+                    (image_pil.size[0], image_pil.size[1], 4), dtype=np.uint8
+                )
                 mask_background_array[:] = (0, 0, 0, 255)
 
-                mask_foreground_array = np.zeros((image_pil.size[0], image_pil.size[1], 4), dtype=np.uint8)
+                mask_foreground_array = np.zeros(
+                    (image_pil.size[0], image_pil.size[1], 4), dtype=np.uint8
+                )
                 mask_foreground_array[:] = (255, 255, 255, 255)
 
                 # Retrieve the masks for the segmented image
                 media_pipe_image = self.get_mediapipe_image(image=image_pil)
-                segmented_masks = segmenter.segment(media_pipe_image)
+                if any(
+                    [face_mask, background_mask, hair_mask, body_mask, clothes_mask]
+                ):
+                    segmented_masks = segmenter.segment(media_pipe_image)
 
                 # https://developers.google.com/mediapipe/solutions/vision/image_segmenter#multiclass-model
                 # 0 - background
@@ -165,8 +189,13 @@ class APersonMaskGenerator:
                     mask_arrays.append(mask_background_array)
                 else:
                     for i, mask in enumerate(masks):
-                        condition = np.stack((mask.numpy_view(),) * image_shape[-1], axis=-1) > confidence
-                        mask_array = np.where(condition, mask_foreground_array, mask_background_array)
+                        condition = (
+                            np.stack((mask.numpy_view(),) * image_shape[-1], axis=-1)
+                            > confidence
+                        )
+                        mask_array = np.where(
+                            condition, mask_foreground_array, mask_background_array
+                        )
                         mask_arrays.append(mask_array)
 
                 # Merge our masks taking the maximum from each
