@@ -16,7 +16,7 @@ def install_dependencies():
             try:
                 __import__(package)
             except ImportError:
-                install_package(package)
+                install_package(f"{package}")
 
 
 install_dependencies()
