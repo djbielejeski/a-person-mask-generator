@@ -4,6 +4,7 @@ Extension for Automatic1111 and ComfyUI to automatically create masks for Backgr
 Uses the [Multi-class selfie segmentation model](https://developers.google.com/mediapipe/solutions/vision/image_segmenter#multiclass-model) model by Google.
 
 ## Updates
+- 2025-02-07 - Fixing ComfyUI vs Auto1111 (improved ComfyUI by adding alpha channel to the image that gets passed to media pipe.  See [issue #47](https://github.com/djbielejeski/a-person-mask-generator/issues/47))
 - 2024-05-26 - Adding facial landmark mask outputs for ComfyUI
 - 2024-05-25 - Fixed ComfyUI requirements and install
 - 2024-01-01 - Added ComfyUI support
