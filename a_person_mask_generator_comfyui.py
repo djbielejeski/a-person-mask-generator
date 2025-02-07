@@ -10,6 +10,11 @@ import numpy as np
 from PIL import Image
 import mediapipe as mp
 
+BaseOptions = mp.tasks.BaseOptions
+ImageSegmenter = mp.tasks.vision.ImageSegmenter
+ImageSegmenterOptions = mp.tasks.vision.ImageSegmenterOptions
+VisionRunningMode = mp.tasks.vision.RunningMode
+
 import folder_paths
 
 
@@ -116,21 +121,27 @@ class APersonMaskGenerator:
         with open(a_person_mask_generator_model_path, "rb") as f:
             a_person_mask_generator_model_buffer = f.read()
 
-        image_segmenter_base_options = mp.tasks.BaseOptions(
+        image_segmenter_base_options = BaseOptions(
             model_asset_buffer=a_person_mask_generator_model_buffer
         )
         options = mp.tasks.vision.ImageSegmenterOptions(
             base_options=image_segmenter_base_options,
-            running_mode=mp.tasks.vision.RunningMode.IMAGE,
+            running_mode=VisionRunningMode.IMAGE,
             output_category_mask=True,
         )
 
         # Create the image segmenter
         res_masks = []
-        with mp.tasks.vision.ImageSegmenter.create_from_options(options) as segmenter:
+        with ImageSegmenter.create_from_options(options) as segmenter:
             for image in images:
                 # Convert the Tensor to a PIL image
                 i = 255.0 * image.cpu().numpy()
+
+                # The media pipe library does a much better job with images with an alpha channel for some reason.
+                if i.shape[-1] == 3:  # If the image is RGB
+                    # Add a fully transparent alpha channel (255)
+                    i = np.dstack((i, np.full((i.shape[0], i.shape[1]), 255)))  # Create an RGBA image
+
                 image_pil = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
 
                 # create our foreground and background arrays for storing the mask results
