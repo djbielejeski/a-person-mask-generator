@@ -1,2 +1,2 @@
-mediapipe==0.10.11
+mediapipe>=0.10.13
 wget
