@@ -4,6 +4,7 @@ Extension for Automatic1111 and ComfyUI to automatically create masks for Backgr
 Uses the [Multi-class selfie segmentation model](https://developers.google.com/mediapipe/solutions/vision/image_segmenter#multiclass-model) model by Google.
 
 ## Updates
+- 2025-02-19 - Adding mask refinement.  This creates a bounding box around the detected mask, then crops the image to the detected area, then runs a second pass for the mask detection. Especially helpful on large resolution images with the person far away.
 - 2025-02-07 - Fixing ComfyUI vs Auto1111 (improved ComfyUI by adding alpha channel to the image that gets passed to media pipe.  See [issue #47](https://github.com/djbielejeski/a-person-mask-generator/issues/47))
 - 2024-05-26 - Adding facial landmark mask outputs for ComfyUI
 - 2024-05-25 - Fixed ComfyUI requirements and install
@@ -63,6 +64,11 @@ Masks in this order
 ## ComfyUI Example - Face Landmarks
 
 ![image](readme/ComfyUI-Workflow-FaceLandmarks.png)
+
+
+## Refine Mask - 1st and 3rd - `refine_mask = false`, 2nd and 4th - `refine_mask = true`
+
+![image](readme/05-refine_mask.png)
 
 
 ## Install - Automatic1111 Web UI
