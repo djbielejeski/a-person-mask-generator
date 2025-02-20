@@ -8,6 +8,7 @@ import torch
 import numpy as np
 from PIL import Image
 import mediapipe as mp
+from .a_person_mask_generator_comfyui import APersonMaskGenerator
 
 
 class APersonFaceLandmarkMaskGenerator:
@@ -173,6 +174,7 @@ class APersonFaceLandmarkMaskGenerator:
                     "FLOAT",
                     {"default": 0.40, "min": 0.01, "max": 1.0, "step": 0.01},
                 ),
+                "refine_mask": true_widget,
             },
         }
 
@@ -195,6 +197,7 @@ class APersonFaceLandmarkMaskGenerator:
         lips: bool,
         number_of_faces: int,
         confidence: float,
+        refine_mask: bool,
     ):
         """Create a segmentation mask from an image
 
@@ -213,6 +216,23 @@ class APersonFaceLandmarkMaskGenerator:
             torch.Tensor: The segmentation masks.
         """
 
+        # use our APersonMaskGenerator with the face specified to get the image we should focus on
+
+        a_person_mask_generator = None
+        face_masks = None
+        if refine_mask:
+            a_person_mask_generator = APersonMaskGenerator()
+            face_masks = a_person_mask_generator.get_mask_images(
+                images=images,
+                face_mask=True,
+                background_mask=False,
+                hair_mask=False,
+                body_mask=False,
+                clothes_mask=False,
+                confidence=0.4,
+                refine_mask=True,
+            )
+
         res_masks = []
         with mp.solutions.face_mesh.FaceMesh(
             static_image_mode=True,
@@ -221,14 +241,28 @@ class APersonFaceLandmarkMaskGenerator:
             min_detection_confidence=confidence,
         ) as face_mesh:
 
-            for image in images:
+            for index, image in enumerate(images):
                 # Convert the Tensor to a PIL image
                 i = 255.0 * image.cpu().numpy()
                 image_pil = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
 
+                do_uncrop = False
+                cropped_image_pil = image_pil
+
+                # use the face mask to refine the image we are processing
+                if refine_mask:
+                    face_mask = face_masks[index]
+
+                    # create the bounding box around the mask
+                    bbox = a_person_mask_generator.get_bbox_for_mask(mask_image=face_mask)
+
+                    if bbox != None:
+                        cropped_image_pil = image_pil.crop(bbox)
+                        do_uncrop = True
+
                 # Process the image
                 results = (
-                    face_mesh.process(np.asarray(image_pil))
+                    face_mesh.process(np.asarray(cropped_image_pil))
                     if any(
                         [
                             face,
@@ -244,7 +278,7 @@ class APersonFaceLandmarkMaskGenerator:
                     else None
                 )
 
-                img_width, img_height = image_pil.size
+                img_width, img_height = cropped_image_pil.size
                 mask = np.zeros((img_height, img_width), dtype=np.uint8)
 
                 if results and results.multi_face_landmarks:
@@ -319,6 +353,11 @@ class APersonFaceLandmarkMaskGenerator:
 
                 # Create the image
                 mask_image = Image.fromarray(mask)
+
+                if do_uncrop:
+                    uncropped_mask_image = Image.new('RGBA', image_pil.size, (0, 0, 0))
+                    uncropped_mask_image.paste(mask_image, bbox)
+                    mask_image = uncropped_mask_image
 
                 # convert PIL image to tensor image
                 tensor_mask = mask_image.convert("RGB")
