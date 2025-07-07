@@ -6,6 +6,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from functools import reduce
 import cv2
+
 import torch
 import numpy as np
 from PIL import Image
@@ -27,12 +28,12 @@ def get_a_person_mask_generator_model_path() -> str:
     model_file_path = os.path.join(model_folder_path, model_name)
 
     if not os.path.exists(model_file_path):
-        import wget
+        import urllib.request
 
         model_url = f"https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_multiclass_256x256/float32/latest/{model_name}"
         print(f"Downloading '{model_name}' model")
         os.makedirs(model_folder_path, exist_ok=True)
-        wget.download(model_url, model_file_path)
+        urllib.request.urlretrieve(model_url, model_file_path)
 
     return model_file_path
 

@@ -1,9 +1,9 @@
 [project]
 name = "a-person-mask-generator"
 description = "Extension for Automatic1111 and ComfyUI to automatically create masks for Background/Hair/Body/Face/Clothes in Img2Img"
-version = "1.0.3"
+version = "1.0.4"
 license = { file = "LICENSE" }
-dependencies = ["mediapipe>=0.10.13", "wget"]
+dependencies = ["mediapipe>=0.10.13"]
 
 [project.urls]
 Repository = "https://github.com/djbielejeski/a-person-mask-generator"
