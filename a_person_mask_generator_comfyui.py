@@ -1,19 +1,11 @@
-import math
 import os
 import sys
-
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-
-from functools import reduce
 import cv2
-
-import os
-import sys
-from functools import reduce
 from typing import List, Optional, Tuple
-
 import numpy as np
 import torch
+
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 # MediaPipe (CPU in Python)
 import mediapipe as mp
