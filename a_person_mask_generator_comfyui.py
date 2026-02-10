@@ -189,7 +189,7 @@ class APersonMaskGenerator:
         else:
             for i, mask in enumerate(masks):
                 condition = (
-                        np.stack((mask.numpy_view(),) * image_shape[-1], axis=-1)
+                        np.stack((mask.numpy_view().squeeze(),) * image_shape[-1], axis=-1)
                         > confidence
                 )
                 mask_array = np.where(
