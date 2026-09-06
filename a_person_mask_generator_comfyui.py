@@ -187,14 +187,22 @@ class APersonMaskGenerator:
         if len(masks) == 0:
             mask_arrays.append(mask_background_array)
         else:
-            for i, mask in enumerate(masks):
-                condition = (
-                        np.stack((mask.numpy_view().squeeze(),) * image_shape[-1], axis=-1)
-                        > confidence
-                )
+            for mask in masks:
+                mask_array = mask.numpy_view()
+
+                # MediaPipe confidence masks can have shape (H, W, 1).
+                if mask_array.ndim == 3 and mask_array.shape[-1] == 1:
+                    mask_array = mask_array[..., 0]
+
+                # Broadcast the 2D mask across the RGBA channels.
+                condition = mask_array[..., None] > confidence
+
                 mask_array = np.where(
-                    condition, mask_foreground_array, mask_background_array
+                    condition,
+                    mask_foreground_array,
+                    mask_background_array,
                 )
+
                 mask_arrays.append(mask_array)
 
         # Merge our masks taking the maximum from each

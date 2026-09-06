@@ -1,1 +1,1 @@
-mediapipe>=0.10.13
+mediapipe>=1.0.1
