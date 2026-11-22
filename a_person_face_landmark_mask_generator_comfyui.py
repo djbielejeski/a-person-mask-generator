@@ -9,6 +9,38 @@ import numpy as np
 from PIL import Image
 import mediapipe as mp
 from .a_person_mask_generator_comfyui import APersonMaskGenerator
+import folder_paths
+
+BaseOptions = mp.tasks.BaseOptions
+FaceLandmarker = mp.tasks.vision.FaceLandmarker
+FaceLandmarkerOptions = mp.tasks.vision.FaceLandmarkerOptions
+VisionRunningMode = mp.tasks.vision.RunningMode
+
+
+def get_face_landmarker_model_path() -> str:
+    model_folder_name = "mediapipe"
+    model_name = "face_landmarker.task"
+
+    model_folder_path = os.path.join(folder_paths.models_dir, model_folder_name)
+    model_file_path = os.path.join(model_folder_path, model_name)
+
+    if not os.path.exists(model_file_path):
+        import urllib.request
+
+        model_url = f"https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/latest/{model_name}"
+        print(f"Downloading '{model_name}' model to '{model_file_path}'")
+        os.makedirs(model_folder_path, exist_ok=True)
+        try:
+            urllib.request.urlretrieve(model_url, model_file_path)
+        except Exception as e:
+            if os.path.exists(model_file_path):
+                os.remove(model_file_path)
+            raise RuntimeError(
+                f"Could not download '{model_name}' from {model_url}. "
+                f"Download it manually and place it at '{model_file_path}'. ({e})"
+            ) from e
+
+    return model_file_path
 
 
 class APersonFaceLandmarkMaskGenerator:
@@ -184,6 +216,36 @@ class APersonFaceLandmarkMaskGenerator:
 
     FUNCTION = "generate_mask"
 
+    @staticmethod
+    def _fill(mask: np.ndarray, mesh_coords: list, indices: list):
+        if max(indices) >= len(mesh_coords):
+            return
+        coords = [mesh_coords[p] for p in indices]
+        cv.fillPoly(mask, [np.array(coords, dtype=np.int32)], 255)
+
+    def draw_features(
+        self, mask, mesh_coords, face, left_eyebrow, right_eyebrow,
+        left_eye, right_eye, left_pupil, right_pupil, lips,
+    ):
+        if face:
+            self._fill(mask, mesh_coords, self.FACEMESH_FACE_OVAL)
+            return
+
+        if left_eyebrow:
+            self._fill(mask, mesh_coords, self.FACEMESH_LEFT_EYEBROW)
+        if right_eyebrow:
+            self._fill(mask, mesh_coords, self.FACEMESH_RIGHT_EYEBROW)
+        if left_eye:
+            self._fill(mask, mesh_coords, self.FACEMESH_LEFT_EYE)
+        if right_eye:
+            self._fill(mask, mesh_coords, self.FACEMESH_RIGHT_EYE)
+        if left_pupil:
+            self._fill(mask, mesh_coords, self.FACEMESH_LEFT_PUPIL)
+        if right_pupil:
+            self._fill(mask, mesh_coords, self.FACEMESH_RIGHT_PUPIL)
+        if lips:
+            self._fill(mask, mesh_coords, self.FACEMESH_LIPS)
+
     def generate_mask(
         self,
         images,
@@ -233,13 +295,21 @@ class APersonFaceLandmarkMaskGenerator:
                 refine_mask=True,
             )
 
+        any_feature_enabled = any([
+            face, left_eyebrow, right_eyebrow, left_eye,
+            right_eye, left_pupil, right_pupil, lips,
+        ])
+
+        options = FaceLandmarkerOptions(
+            base_options=BaseOptions(model_asset_path=get_face_landmarker_model_path()),
+            running_mode=VisionRunningMode.IMAGE,
+            num_faces=number_of_faces,
+            min_face_detection_confidence=confidence,
+            min_face_presence_confidence=confidence,
+        )
+
         res_masks = []
-        with mp.solutions.face_mesh.FaceMesh(
-            static_image_mode=True,
-            refine_landmarks=True,
-            max_num_faces=number_of_faces,
-            min_detection_confidence=confidence,
-        ) as face_mesh:
+        with FaceLandmarker.create_from_options(options) as face_landmarker:
 
             for index, image in enumerate(images):
                 # Convert the Tensor to a PIL image
@@ -261,95 +331,36 @@ class APersonFaceLandmarkMaskGenerator:
                         do_uncrop = True
 
                 # Process the image
-                results = (
-                    face_mesh.process(np.asarray(cropped_image_pil))
-                    if any(
-                        [
-                            face,
-                            left_eyebrow,
-                            right_eyebrow,
-                            left_eye,
-                            right_eye,
-                            left_pupil,
-                            right_pupil,
-                            lips,
-                        ]
+                results = None
+                if any_feature_enabled:
+                    rgb = np.ascontiguousarray(
+                        np.asarray(cropped_image_pil.convert("RGB"), dtype=np.uint8)
                     )
-                    else None
-                )
+                    mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
+                    results = face_landmarker.detect(mp_image)
 
                 img_width, img_height = cropped_image_pil.size
                 mask = np.zeros((img_height, img_width), dtype=np.uint8)
 
-                if results and results.multi_face_landmarks:
-                    mesh_coords = [
-                        (int(point.x * img_width), int(point.y * img_height))
-                        for point in results.multi_face_landmarks[0].landmark
-                    ]
+                if results and results.face_landmarks:
+                    for face_landmarks in results.face_landmarks:
+                        mesh_coords = [
+                            (int(point.x * img_width), int(point.y * img_height))
+                            for point in face_landmarks
+                        ]
 
-                    if face:
-                        face_coords = [mesh_coords[p] for p in self.FACEMESH_FACE_OVAL]
-                        cv.fillPoly(mask, [np.array(face_coords, dtype=np.int32)], 255)
-                    else:
-                        if left_eyebrow:
-                            left_eyebrow_coords = [
-                                mesh_coords[p] for p in self.FACEMESH_LEFT_EYEBROW
-                            ]
-                            cv.fillPoly(
-                                mask,
-                                [np.array(left_eyebrow_coords, dtype=np.int32)],
-                                255,
-                            )
-
-                        if right_eyebrow:
-                            right_eyebrow_coords = [
-                                mesh_coords[p] for p in self.FACEMESH_RIGHT_EYEBROW
-                            ]
-                            cv.fillPoly(
-                                mask,
-                                [np.array(right_eyebrow_coords, dtype=np.int32)],
-                                255,
-                            )
-
-                        if left_eye:
-                            left_eye_coords = [
-                                mesh_coords[p] for p in self.FACEMESH_LEFT_EYE
-                            ]
-                            cv.fillPoly(
-                                mask, [np.array(left_eye_coords, dtype=np.int32)], 255
-                            )
-
-                        if right_eye:
-                            right_eye_coords = [
-                                mesh_coords[p] for p in self.FACEMESH_RIGHT_EYE
-                            ]
-                            cv.fillPoly(
-                                mask, [np.array(right_eye_coords, dtype=np.int32)], 255
-                            )
-
-                        if left_pupil:
-                            left_pupil_coords = [
-                                mesh_coords[p] for p in self.FACEMESH_LEFT_PUPIL
-                            ]
-                            cv.fillPoly(
-                                mask, [np.array(left_pupil_coords, dtype=np.int32)], 255
-                            )
-
-                        if right_pupil:
-                            right_pupil_coords = [
-                                mesh_coords[p] for p in self.FACEMESH_RIGHT_PUPIL
-                            ]
-                            cv.fillPoly(
-                                mask,
-                                [np.array(right_pupil_coords, dtype=np.int32)],
-                                255,
-                            )
-
-                        if lips:
-                            lips_coords = [mesh_coords[p] for p in self.FACEMESH_LIPS]
-                            cv.fillPoly(
-                                mask, [np.array(lips_coords, dtype=np.int32)], 255
-                            )
+                        self.draw_features(
+                            mask=mask,
+                            mesh_coords=mesh_coords,
+                            face=face,
+                            left_eyebrow=left_eyebrow,
+                            right_eyebrow=right_eyebrow,
+                            left_eye=left_eye,
+                            right_eye=right_eye,
+                            left_pupil=left_pupil,
+                            right_pupil=right_pupil,
+                            lips=lips,
+                        )
 
                 # Create the image
                 mask_image = Image.fromarray(mask)
